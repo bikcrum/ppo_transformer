@@ -13,7 +13,7 @@ class ReplayBuffer:
         self.reset_buffer()
 
     def reset_buffer(self):
-        self.buffer = {'s': torch.zeros(self.buffer_size, *self.args.state_dim, dtype=torch.float32),
+        self.buffer = {'s': torch.zeros(self.buffer_size, self.args.state_dim, dtype=torch.float32),
                        'a': torch.zeros(self.buffer_size, self.args.action_dim, dtype=torch.float32),
                        'a_logprob': torch.zeros(self.buffer_size, self.args.action_dim, dtype=torch.float32),
                        'r': torch.zeros(self.buffer_size, dtype=torch.float32),

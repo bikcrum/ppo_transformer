@@ -3,3 +3,4 @@ checkpoints/
 saved_models/
 wandb/
 __pycache__/
+*.sh

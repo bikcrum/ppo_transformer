@@ -17,7 +17,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 @ray.remote
 class Worker:
     def __init__(self, env_name, dispatcher, actor, args, device, worker_id):
-        self.env = gym.make(env_name, domain_randomize=True)
+        self.env = gym.make(env_name)
 
         self.action_low = self.env.action_space.low
         self.action_high = self.env.action_space.high
@@ -40,7 +40,7 @@ class Worker:
             p.data.copy_(new_p)
 
     def get_action(self, s, mask, deterministic=False):
-        assert s.dim() == 4, f"s must be 4D, [seq_len, *state_dim]. Actual: {s.dim()}"
+        assert s.dim() == 2, f"s must be 2D, [seq_len, state_dim]. Actual: {s.dim()}"
 
         # Add batch dimension
         s = s.unsqueeze(0)
@@ -78,7 +78,7 @@ class Worker:
                 self.reward_scaling.reset()
 
             for step in range(max_ep_len):
-                replay_buffer.store_state(torch.tensor(s / 255.0, dtype=torch.float32, device=self.device))
+                replay_buffer.store_state(torch.tensor(s, dtype=torch.float32, device=self.device))
 
                 start_idx, end_idx = max(0, step - self.args.transformer_window + 1), step + 1
 
@@ -114,7 +114,7 @@ class Worker:
                     del replay_buffer
                     return
 
-            replay_buffer.store_last_state(torch.tensor(s / 255.0, dtype=torch.float32, device=self.device))
+            replay_buffer.store_last_state(torch.tensor(s, dtype=torch.float32, device=self.device))
 
             return replay_buffer, episode_reward, step + 1, self.worker_id
 
@@ -122,7 +122,7 @@ class Worker:
         with torch.inference_mode():
             assert max_ep_len <= self.args.time_horizon, f"max_ep_len must be less than or equal time_horizon."
 
-            state_buffer = torch.zeros(max_ep_len, *self.args.state_dim, dtype=torch.float32)
+            state_buffer = torch.zeros(max_ep_len, self.args.state_dim, dtype=torch.float32)
 
             s = self.env.reset(options={"randomize": True})
 
@@ -130,7 +130,7 @@ class Worker:
 
             for step in range(max_ep_len):
 
-                state_buffer[step] = torch.tensor(s / 255.0, dtype=torch.float32, device=self.device)
+                state_buffer[step] = torch.tensor(s, dtype=torch.float32, device=self.device)
 
                 start_idx, end_idx = max(0, step - self.args.transformer_window + 1), step + 1
 

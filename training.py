@@ -17,9 +17,9 @@ def main(args, env_name, previous_run=None, parent_run=None):
 
     run_name = str(time_now)
 
-    env = gym.make(env_name, domain_randomize=True)
+    env = gym.make(env_name)
 
-    args.state_dim = env.observation_space.shape
+    args.state_dim = env.observation_space.shape[0]
     args.action_dim = env.action_space.shape[0]
 
     print(f"env={env_name}")
@@ -236,16 +236,16 @@ def main(args, env_name, previous_run=None, parent_run=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameters")
     parser.add_argument("--max_steps", type=int, default=int(4e9), help="Maximum number of training steps")
-    parser.add_argument("--evaluate_freq", type=float, default=8192 * 2, help="Policy evaluation frequency")
+    parser.add_argument("--evaluate_freq", type=float, default=1600 * 8 * 2, help="Policy evaluation frequency")
     parser.add_argument("--n_collectors", type=int, default=8, help="Number of collectors")
     parser.add_argument("--n_evaluators", type=int, default=4, help="Number of evaluators")
-    parser.add_argument("--buffer_size", type=int, default=8192, help="Total steps to collect before training")
-    parser.add_argument("--eval_steps", type=int, default=4096, help="Total steps to evaluate the policy")
-    parser.add_argument("--mini_batch_size", type=int, default=32,
+    parser.add_argument("--buffer_size", type=int, default=1600 * 8, help="Total steps to collect before training")
+    parser.add_argument("--eval_steps", type=int, default=1600 * 4, help="Total steps to evaluate the policy")
+    parser.add_argument("--mini_batch_size", type=int, default=256,
                         help="Total number of sequences to sample from buffer")
     parser.add_argument("--hidden_dim", type=int, default=128, help="Output dimension of CNN and input to transformer")
     parser.add_argument("--transformer_window", type=int, default=64, help="Maximum sequence length in transformer")
-    parser.add_argument("--time_horizon", type=int, default=1000, help="The maximum length of the episode")
+    parser.add_argument("--time_horizon", type=int, default=1600, help="The maximum length of the episode")
     parser.add_argument('--transformer_num_layers', type=int, default=4, help='Number of layers in transformer encoder')
     parser.add_argument('--transformer_nhead', type=int, default=4, help='Number of attention heads in transformer')
     parser.add_argument('--transformer_dim_feedforward', type=int, default=64, help='FF dimension in transformer')
@@ -272,4 +272,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    main(args, env_name='CarRacing-v1')
+    main(args, env_name='BipedalWalker-v3')

@@ -37,17 +37,10 @@ class Actor(nn.Module):
     def __init__(self, args):
         super(Actor, self).__init__()
 
-        self.downsample = nn.Upsample(size=(32, 32), mode='bilinear', align_corners=False)
-
-        self.conv_layers = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=(3, 3), padding=1),
+        self.fc_layers = nn.Sequential(
+            nn.Linear(args.state_dim, args.hidden_dim),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=(2, 2)),
-            nn.Conv2d(16, 16, kernel_size=(3, 3), padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=(2, 2)),
-            nn.Flatten(),
-            nn.Linear(1024, args.hidden_dim)
+            nn.Linear(args.hidden_dim, args.hidden_dim),
         )
 
         self.pos_encoder = PositionalEncoding(d_model=args.hidden_dim, dropout=args.transformer_dropout,
@@ -63,7 +56,7 @@ class Actor(nn.Module):
         self.log_std = nn.Parameter(torch.zeros(1, args.action_dim))
 
         if args.use_orthogonal_init:
-            for layer in self.conv_layers:
+            for layer in self.fc_layers:
                 if isinstance(layer, nn.Linear):
                     orthogonal_init(layer)
 
@@ -72,21 +65,7 @@ class Actor(nn.Module):
 
     # s: [batch_size, seq_len, width, height, channel]
     def forward(self, s, mask, need_weights=False):
-        # Rearrange dimensions
-        s = s.permute(0, 1, 4, 2, 3)
-
-        # Convert to grayscale
-        s = s.mean(dim=2, keepdim=True)
-
-        B, S, C, W, H = s.size()
-
-        # Merge batch and seq_len dimensions
-        s = s.view(B * S, C, W, H)
-
-        # Resize images to 32x32
-        s = self.downsample(s)
-
-        s = self.conv_layers(s).view(B, S, -1)
+        s = self.fc_layers(s)
         # s: [batch_size, seq_len, hidden_dim]
 
         s = s.transpose(0, 1)
@@ -121,17 +100,10 @@ class Critic(nn.Module):
     def __init__(self, args):
         super(Critic, self).__init__()
 
-        self.downsample = nn.Upsample(size=(32, 32), mode='bilinear', align_corners=False)
-
-        self.conv_layers = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=(3, 3), padding=1),
+        self.fc_layers = nn.Sequential(
+            nn.Linear(args.state_dim, args.hidden_dim),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=(2, 2)),
-            nn.Conv2d(16, 16, kernel_size=(3, 3), padding=1),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=(2, 2)),
-            nn.Flatten(),
-            nn.Linear(1024, args.hidden_dim)
+            nn.Linear(args.hidden_dim, args.hidden_dim),
         )
 
         self.pos_encoder = PositionalEncoding(d_model=args.hidden_dim, dropout=args.transformer_dropout,
@@ -144,7 +116,7 @@ class Critic(nn.Module):
         self.value_layer = nn.Linear(args.hidden_dim, 1)
 
         if args.use_orthogonal_init:
-            for layer in self.conv_layers:
+            for layer in self.fc_layers:
                 if isinstance(layer, nn.Linear):
                     orthogonal_init(layer)
 
@@ -152,21 +124,7 @@ class Critic(nn.Module):
 
     # s: [batch_size, seq_len, width, height, channel]
     def forward(self, s, mask):
-        # Rearrange dimensions
-        s = s.permute(0, 1, 4, 2, 3)
-
-        # Convert to grayscale
-        s = s.mean(dim=2, keepdim=True)
-
-        B, S, C, W, H = s.size()
-
-        # Merge batch and seq_len dimensions
-        s = s.view(B * S, C, W, H)
-
-        # Resize images to 32x32
-        s = self.downsample(s)
-
-        s = self.conv_layers(s).view(B, S, -1)
+        s = self.fc_layers(s)
         # s: [batch_size, seq_len, hidden_dim]
 
         s = s.transpose(0, 1)
