@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def get_action(actor, s, mask):
-    assert s.dim() == 4, f"s must be 4D, [seq_len, *state_dim]. Actual: {s.dim()}"
+    assert s.dim() == 2, f"s must be 2D, [seq_len, state_dim]. Actual: {s.dim()}"
 
     # Add batch dimension
     s = s.unsqueeze(0)
@@ -40,11 +40,11 @@ def scale_action(y1, y2, x1, x2, x):
 
 def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
     parser = argparse.ArgumentParser("Hyperparameters")
-    parser.add_argument("--hidden_dim", type=int, default=128, help="Output dimension of CNN and input to transformer")
-    parser.add_argument("--transformer_window", type=int, default=64, help="Maximum sequence length in transformer")
-    parser.add_argument("--time_horizon", type=int, default=1000, help="The maximum length of the episode")
-    parser.add_argument('--transformer_num_layers', type=int, default=4, help='Number of layers in transformer encoder')
-    parser.add_argument('--transformer_nhead', type=int, default=4, help='Number of attention heads in transformer')
+    parser.add_argument("--hidden_dim", type=int, default=64, help="Output dimension of CNN and input to transformer")
+    parser.add_argument("--transformer_window", type=int, default=16, help="Maximum sequence length in transformer")
+    parser.add_argument("--time_horizon", type=int, default=1600, help="The maximum length of the episode")
+    parser.add_argument('--transformer_num_layers', type=int, default=1, help='Number of layers in transformer encoder')
+    parser.add_argument('--transformer_nhead', type=int, default=1, help='Number of attention heads in transformer')
     parser.add_argument('--transformer_dim_feedforward', type=int, default=64, help='FF dimension in transformer')
     parser.add_argument('--transformer_dropout', type=int, default=0.0,
                         help='Dropout positional encoder and transformer encoder')
@@ -52,9 +52,9 @@ def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
 
     args = parser.parse_args()
 
-    env = gym.make(env_name, domain_randomize=True)
+    env = gym.make(env_name)
 
-    args.state_dim = env.observation_space.shape
+    args.state_dim = env.observation_space.shape[0]
     args.action_dim = env.action_space.shape[0]
     action_low = env.action_space.low
     action_high = env.action_space.high
@@ -97,7 +97,7 @@ def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
     reward = 0
     length = 0
 
-    state_buffer = torch.zeros(args.time_horizon, *args.state_dim, dtype=torch.float32, device=device)
+    state_buffer = torch.zeros(args.time_horizon, args.state_dim, dtype=torch.float32, device=device)
 
     causal_mask = nn.Transformer.generate_square_subsequent_mask(args.transformer_window).to(device)
 
@@ -109,15 +109,13 @@ def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
         episode_reward = 0
 
         for step in range(args.time_horizon):
-            state_buffer[step] = torch.tensor(s / 255.0, dtype=torch.float32, device=device)
+            state_buffer[step] = torch.tensor(s, dtype=torch.float32, device=device)
 
             start_idx, end_idx = max(0, step - args.transformer_window + 1), step + 1
 
             a, attn_maps = get_action(actor,
                                       state_buffer[start_idx:end_idx],
                                       causal_mask[:end_idx - start_idx, :end_idx - start_idx])
-
-            # logging.info(f'Action:{a}', pd.DataFrame(state_buffer[step].flatten()).describe())
 
             action = scale_action(y1=action_low, y2=action_high,
                                   x1=-1, x2=1, x=a.cpu().numpy())
@@ -154,8 +152,8 @@ def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
 
 if __name__ == '__main__':
     with torch.inference_mode():
-        evaluate_policy(env_name='CarRacing-v1',
-                        run_name='2023-06-07 20:31:08.669398',
-                        replace=False,
+        evaluate_policy(env_name='BipedalWalker-v3',
+                        run_name='2023-06-08 12:38:08.486890',
+                        replace=True,
                         best=False,
                         render=True)

@@ -30,7 +30,7 @@ def main(args, env_name, previous_run=None, parent_run=None):
 
     agent = PPO(args, dev_gpu)
 
-    logging.info(f'Using device:{dev_cpu}(inference), {dev_gpu}(optimization)')
+    logging.info(f'Using device:{dev_cpu}(CPU), {dev_gpu}(CUDA)')
 
     os.makedirs('checkpoints', exist_ok=True)
     os.makedirs('saved_models', exist_ok=True)
@@ -243,11 +243,11 @@ if __name__ == '__main__':
     parser.add_argument("--eval_steps", type=int, default=1600 * 4, help="Total steps to evaluate the policy")
     parser.add_argument("--mini_batch_size", type=int, default=256,
                         help="Total number of sequences to sample from buffer")
-    parser.add_argument("--hidden_dim", type=int, default=128, help="Output dimension of CNN and input to transformer")
-    parser.add_argument("--transformer_window", type=int, default=64, help="Maximum sequence length in transformer")
+    parser.add_argument("--hidden_dim", type=int, default=64, help="Output dimension of CNN and input to transformer")
+    parser.add_argument("--transformer_window", type=int, default=16, help="Maximum sequence length in transformer")
     parser.add_argument("--time_horizon", type=int, default=1600, help="The maximum length of the episode")
-    parser.add_argument('--transformer_num_layers', type=int, default=4, help='Number of layers in transformer encoder')
-    parser.add_argument('--transformer_nhead', type=int, default=4, help='Number of attention heads in transformer')
+    parser.add_argument('--transformer_num_layers', type=int, default=1, help='Number of layers in transformer encoder')
+    parser.add_argument('--transformer_nhead', type=int, default=1, help='Number of attention heads in transformer')
     parser.add_argument('--transformer_dim_feedforward', type=int, default=64, help='FF dimension in transformer')
     parser.add_argument('--transformer_dropout', type=int, default=0.0,
                         help='Dropout positional encoder and transformer encoder')
