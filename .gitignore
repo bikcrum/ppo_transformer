@@ -1,0 +1,4 @@
+.idea/
+checkpoints/
+saved_models/
+wandb/
