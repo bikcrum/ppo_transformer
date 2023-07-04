@@ -15,7 +15,7 @@ class ReplayBuffer:
     def reset_buffer(self):
         self.buffer = {'s': torch.zeros(self.buffer_size, self.args.state_dim, dtype=torch.float32),
                        'a': torch.zeros(self.buffer_size, self.args.action_dim, dtype=torch.float32),
-                       'a_logprob': torch.zeros(self.buffer_size, self.args.action_dim, dtype=torch.float32),
+                       # 'a_logprob': torch.zeros(self.buffer_size, self.args.action_dim, dtype=torch.float32),
                        'r': torch.zeros(self.buffer_size, dtype=torch.float32),
                        'dw': torch.ones(self.buffer_size, dtype=torch.bool)}
         self.count = 0
@@ -25,9 +25,9 @@ class ReplayBuffer:
     def store_state(self, s):
         self.buffer['s'][self.count] = s
 
-    def store_transition(self, a, a_logprob, r, dw):
+    def store_transition(self, a, r, dw):
         self.buffer['a'][self.count] = a
-        self.buffer['a_logprob'][self.count] = a_logprob
+        # self.buffer['a_logprob'][self.count] = a_logprob
         self.buffer['r'][self.count] = r
         self.buffer['dw'][self.count] = dw
 
@@ -44,7 +44,7 @@ class ReplayBuffer:
 
         self.buffer['s'][self.count:self.count + rem_count] = replay_buffer.buffer['s'][:rem_count]
         self.buffer['a'][self.count:self.count + rem_count] = replay_buffer.buffer['a'][:rem_count]
-        self.buffer['a_logprob'][self.count:self.count + rem_count] = replay_buffer.buffer['a_logprob'][:rem_count]
+        # self.buffer['a_logprob'][self.count:self.count + rem_count] = replay_buffer.buffer['a_logprob'][:rem_count]
         self.buffer['r'][self.count:self.count + rem_count] = replay_buffer.buffer['r'][:rem_count]
         self.buffer['dw'][self.count:self.count + rem_count] = replay_buffer.buffer['dw'][:rem_count]
 
@@ -91,7 +91,7 @@ class ReplayBuffer:
             s = replay_buffer.buffer['s']
             s_last = torch.stack(replay_buffer.s_last)
             a = replay_buffer.buffer['a']
-            a_logprob = replay_buffer.buffer['a_logprob']
+            # a_logprob = replay_buffer.buffer['a_logprob']
             r = replay_buffer.buffer['r']
             dw = replay_buffer.buffer['dw']
             ep_lens = replay_buffer.ep_lens
@@ -103,7 +103,7 @@ class ReplayBuffer:
             s = s.to(device)
             s_last = s_last.to(device)
             a = a.to(device)
-            a_logprob = a_logprob.to(device)
+            # a_logprob = a_logprob.to(device)
             r = r.to(device)
             dw = dw.to(device)
             active = torch.ones_like(r, dtype=torch.bool, device=device)
@@ -150,6 +150,6 @@ class ReplayBuffer:
             v_target = v_target[active]
 
             ep_lens = torch.tensor(ep_lens, dtype=torch.int32, device=device)
-            buffer = dict(s=s, a=a, a_logprob=a_logprob, adv=adv, v_target=v_target, ep_lens=ep_lens)
+            buffer = dict(s=s, a=a, adv=adv, v_target=v_target, ep_lens=ep_lens)
 
             return buffer

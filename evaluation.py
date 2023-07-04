@@ -97,7 +97,7 @@ def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
     reward = 0
     length = 0
 
-    state_buffer = torch.zeros(args.time_horizon, args.state_dim, dtype=torch.float32, device=device)
+    state_buffer = torch.zeros(args.transformer_window, args.state_dim, dtype=torch.float32, device=device)
 
     causal_mask = nn.Transformer.generate_square_subsequent_mask(args.transformer_window).to(device)
 
@@ -109,13 +109,14 @@ def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
         episode_reward = 0
 
         for step in range(args.time_horizon):
-            state_buffer[step] = torch.tensor(s, dtype=torch.float32, device=device)
+            seq_len = min(step + 1, args.transformer_window)
 
-            start_idx, end_idx = max(0, step - args.transformer_window + 1), step + 1
+            state_buffer[seq_len - 1] = torch.tensor(s, dtype=torch.float32, device=device)
 
-            a, attn_maps = get_action(actor,
-                                      state_buffer[start_idx:end_idx],
-                                      causal_mask[:end_idx - start_idx, :end_idx - start_idx])
+            a, attn_maps = get_action(actor, state_buffer[:seq_len], causal_mask[:seq_len, :seq_len])
+
+            if seq_len == args.transformer_window:
+                state_buffer = state_buffer.roll(-1, dims=1)
 
             action = scale_action(y1=action_low, y2=action_high,
                                   x1=-1, x2=1, x=a.cpu().numpy())
@@ -153,7 +154,7 @@ def evaluate_policy(env_name, run_name, replace=True, best=True, render=True):
 if __name__ == '__main__':
     with torch.inference_mode():
         evaluate_policy(env_name='BipedalWalker-v3',
-                        run_name='2023-06-08 12:38:08.486890',
+                        run_name='2023-07-03 23:46:02.222387',
                         replace=True,
                         best=False,
                         render=True)

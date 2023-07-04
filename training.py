@@ -7,6 +7,7 @@ import tqdm
 
 from ppo import PPO
 from utils import *
+from torch.distributions import kl_divergence
 
 logging.getLogger().setLevel(logging.DEBUG)
 
@@ -192,7 +193,7 @@ def main(args, env_name, previous_run=None, parent_run=None):
         buffer = ReplayBuffer.create_buffer(replay_buffer, args, critic_global, device=dev_gpu)
 
         # Update agent
-        actor_loss, critic_loss, entropy, entropy_bonus, batch_size = agent.update(buffer, total_steps)
+        actor_loss, entropy_loss, critic_loss, kl, batch_size, train_epoch = agent.update(buffer, total_steps)
 
         # Copy updated models to global models
         update_model(actor_global, agent.actor.parameters())
@@ -201,13 +202,14 @@ def main(args, env_name, previous_run=None, parent_run=None):
         time_training = datetime.datetime.now() - time_training
 
         log = {'train/actor_loss': actor_loss,
+               'train/entropy_loss': entropy_loss,
                'train/critic_loss': critic_loss,
-               'train/entropy': entropy,
-               'train/entropy_bonus': entropy_bonus,
+               'train/kl_divergence': kl,
                'misc/total_steps': total_steps,
                'misc/trajectory_count': trajectory_count,
                'misc/batch_size': batch_size,
                'misc/epochs': epochs,
+               'misc/train_epoch': train_epoch,
                'misc/time_training': time_training.total_seconds(),
                'misc/time_elapsed': (datetime.datetime.now() - time_now).total_seconds()}
 
@@ -261,6 +263,7 @@ if __name__ == '__main__':
     parser.add_argument("--lamda", type=float, default=0.95, help="GAE parameter")
     parser.add_argument("--epsilon", type=float, default=0.2, help="PPO clip parameter")
     parser.add_argument("--num_epoch", type=int, default=10, help="PPO parameter")
+    parser.add_argument("--kl_threshold", type=int, default=0.1, help="PPO parameter")
     parser.add_argument("--use_adv_norm", type=bool, default=True, help="Whether to use advantage normalization")
     parser.add_argument("--use_reward_scaling", type=bool, default=True, help="Whether to use reward scaling")
     parser.add_argument("--entropy_coef", type=float, default=0.01, help="Policy entropy")

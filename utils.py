@@ -51,20 +51,23 @@ class Worker:
 
             # Get output from last observation
             a = a.squeeze(0)[-1]
-            # mean: [action_dim]
+            # a: [action_dim]
             return a
         else:
             dist = self.actor.pdf(s, mask)
             a = dist.sample()
             # a: [1, seq_len, action_dim]
 
-            a_logprob = dist.log_prob(a)
+            # a_logprob = dist.log_prob(a)
             # a_logprob: [1, seq_len, action_dim]
 
-            a, a_logprob = a.squeeze(0)[-1], a_logprob.squeeze(0)[-1]
+            # a, a_logprob = a.squeeze(0)[-1], a_logprob.squeeze(0)[-1]
             # a: [action_dim], a_logprob: [action_dim]
 
-            return a, a_logprob
+            a = a.squeeze(0)[-1]
+            # a: [action_dim]
+
+            return a
 
     def collect(self, max_ep_len, render=False):
         with torch.inference_mode():
@@ -82,9 +85,9 @@ class Worker:
 
                 start_idx, end_idx = max(0, step - self.args.transformer_window + 1), step + 1
 
-                a, a_logprob = self.get_action(replay_buffer.buffer['s'][start_idx:end_idx],
-                                               self.causal_mask[:end_idx - start_idx, :end_idx - start_idx],
-                                               deterministic=False)
+                a = self.get_action(replay_buffer.buffer['s'][start_idx:end_idx],
+                                    self.causal_mask[:end_idx - start_idx, :end_idx - start_idx],
+                                    deterministic=False)
 
                 action = self.scale_action(y1=self.action_low, y2=self.action_high,
                                            x1=-1, x2=1, x=a.cpu().numpy())
@@ -105,7 +108,7 @@ class Worker:
                     r = self.reward_scaling(r)
 
                 r = torch.tensor(r, dtype=torch.float32, device=self.device)
-                replay_buffer.store_transition(a, a_logprob, r, dw)
+                replay_buffer.store_transition(a, r, dw)
 
                 if done:
                     break
@@ -122,21 +125,23 @@ class Worker:
         with torch.inference_mode():
             assert max_ep_len <= self.args.time_horizon, f"max_ep_len must be less than or equal time_horizon."
 
-            state_buffer = torch.zeros(max_ep_len, self.args.state_dim, dtype=torch.float32)
+            state_buffer = torch.zeros(self.args.transformer_window, self.args.state_dim, dtype=torch.float32)
 
             s = self.env.reset(options={"randomize": True})
 
             episode_reward = 0
 
             for step in range(max_ep_len):
+                seq_len = min(step + 1, self.args.transformer_window)
 
-                state_buffer[step] = torch.tensor(s, dtype=torch.float32, device=self.device)
+                # state_buffer[step] = torch.tensor(s, dtype=torch.float32, device=self.device)
 
-                start_idx, end_idx = max(0, step - self.args.transformer_window + 1), step + 1
+                state_buffer[seq_len - 1] = torch.tensor(s, dtype=torch.float32, device=self.device)
 
-                a = self.get_action(state_buffer[start_idx:end_idx],
-                                    self.causal_mask[:end_idx - start_idx, :end_idx - start_idx],
-                                    deterministic=True)
+                a = self.get_action(state_buffer[:seq_len], self.causal_mask[:seq_len, :seq_len], deterministic=True)
+
+                if seq_len == self.args.transformer_window:
+                    state_buffer = state_buffer.roll(-1, dims=1)
 
                 action = self.scale_action(y1=self.action_low, y2=self.action_high,
                                            x1=-1, x2=1, x=a.cpu().numpy())
